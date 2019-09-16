@@ -1,4 +1,4 @@
- ;;; cell.el --- EIEIO spreadsheet mode -*- lexical-binding: nil; -*-
+;;; cell.el --- EIEIO spreadsheet mode -*- lexical-binding: nil; -*-
 
 ;; Copyright (C) 2006, 2019 by David O'Toole
 
@@ -34,20 +34,20 @@
 ;; Summary:
 
 ;; Cell-mode implements an abstract spreadsheet control in an Emacs
-;; buffer. The purpose of Cell-mode is to provide a major mode for
+;; buffer.  The purpose of Cell-mode is to provide a major mode for
 ;; spreadsheet-based user interfaces; it can be further extended by
 ;; defining application-specific Emacs Lisp minor modes which supply
 ;; new cell and spreadsheet classes via Emacs' included object system,
-;; EIEIO. The website for Cell-mode is http://xelf.me/cell.html.
+;; EIEIO.  The website for Cell-mode is http://xelf.me/cell.html.
 
-;; Features: 
+;; Features:
 
 ;; - Uses a simple file format based on Lisp property lists.  Cell-mode
 ;;   files can be visited, saved, loaded, and so on just like any other
-;;   text file. Works with Emacs' existing autosave and backup features.
+;;   text file.  Works with Emacs' existing autosave and backup features.
 ;; - You can cut, copy, and paste cells between sheets using typical
 ;;   Emacs shortcuts, as well as insert and delete rows and
-;;   columns. 
+;;   columns.
 ;; - Undo/redo support.
 ;; - Execute sexps in cells, and other user defined actions.
 ;; - Rectangle selection via keyboard and mouse-drag are available.
@@ -66,63 +66,63 @@
 
 ;; - It is highly recommended to byte-compile this file so that
 ;;   Cell-mode responds quickly to keypresses.
-;; - Emacs' CL emulation package is required at runtime. This
+;; - Emacs' CL emulation package is required at runtime.  This
 ;;   requirement will be eliminated if possible.
 ;; - Cell-mode source dates originally to 2006 and thus uses dynamic
-;;   binding by default. Two warnings each about free variables named
-;;   "row" and "col" are to be expected during byte-compilation. 
+;;   binding by default.  Two warnings each about free variables named
+;;   "row" and "col" are to be expected during byte-compilation.
 
 ;; Getting started:
 
-;; Download cell.el and place it in your Emacs load-path. Then:
+;; Download cell.el and place it in your Emacs load-path.  Then:
 
 ;;  (require 'cell)
 ;;  (add-to-list 'auto-mode-alist (cons "\\.cell" 'cell-mode))
 
 ;; Then use M-x CELL-SHEET-CREATE, or visit a new file with the
-;; extension ".cell". Press "Control-H m" to get help on the
+;; extension ".cell".  Press "Control-H m" to get help on the
 ;; keybindings.
 
 ;; To byte-compile and load cell-mode in one step, use:
 
-;;   (byte-compile-file "/path/to/cell.el" t) 
+;;   (byte-compile-file "/path/to/cell.el" t)
 
 ;; How to extend Cell-mode:
 
 ;; - Use EIEIO's DEFCLASS to derive new subclasses from the included
 ;;   CELL and CELL-SHEET classes in order to implement the new
 ;;   behaviors you want; use DEFINE-DERIVED-MODE or DEFINE-MINOR-MODE
-;;   to extend the Emacs mode if necessary. Available CELL methods
+;;   to extend the Emacs mode if necessary.  Available CELL methods
 ;;   are:
 
 ;;     (INITIALIZE-INSTANCE :AFTER (C CELL) &KEY)
 ;;       Define this :AFTER method for any initialization you need.
 
 ;;     (CELL-EXECUTE (C CELL))
-;;       Perform a cell's action. S-Expression cells are evaluated.
+;;       Perform a cell's action.  S-Expression cells are evaluated.
 
 ;;     (CELL-COLLECT-VALUE-P (C CELL))
-;;       Return non-nil if COLLECT-CELLS and related functions should
-;;       include this cell in their output. This is used to implement
+;;       Return non-nil if CELL-COLLECT-CELLS and related functions should
+;;       include this cell in their output.  This is used to implement
 ;;       disappearing comment cells.
 
 ;;     (CELL-GET-VALUE (C CELL))
 ;;       Return the stored value.
 
 ;;     (CELL-SET-VALUE (C CELL) VALUE)
-;;       Set the value. You can define :BEFORE, :AFTER methods here
+;;       Set the value.  You can define :BEFORE, :AFTER methods here
 ;;       etc.
 
 ;;     (CELL-FIND-VALUE (C CELL))
-;;       Lazily find the value. Just returns the value by default;
+;;       Lazily find the value.  Just returns the value by default;
 ;;       subclasses can use this for cache-on-demand behavior.
 
 ;;     (CELL-TAP (C CELL))
-;;       Primary (left-click) action for cells. By default this just
+;;       Primary (left-click) action for cells.  By default this just
 ;;       selects the cell.
 
 ;;     (CELL-ALTERNATE-TAP (C CELL))
-;;       Secondary click action for cells. By default this calls
+;;       Secondary click action for cells.  By default this calls
 ;;       CELL-EXECUTE.
 
 ;;     (CELL-ACCEPT-STRING-VALUE (C CELL) STRING)
@@ -135,22 +135,22 @@
 ;;        Create a new cell sheet in a new buffer with ROWS rows and
 ;;        COLS columns.
 
-;;      (COLLECT-CELLS SHEET)
+;;      (CELL-COLLECT-CELLS SHEET)
 ;;        Return a flat list of all cells in the spreadsheet, in
 ;;        left-to-right then top-to-bottom order.
 
-;;      (COLLECT-CELLS-BY-ROW SHEET)
+;;      (CELL-COLLECT-CELLS-BY-ROW SHEET)
 ;;        Return a list of rows of cells from the spreadsheet.
 
 ;;   The buffer-local variable CELL-SHEET is always set to the
 ;;   current CELL-SHEET object.
 
-;;   Documentation for the CELL-SHEET class is forthcoming. Read on
+;;   Documentation for the CELL-SHEET class is forthcoming.  Read on
 ;;   and check the docstrings below if you wish to learn more.
 
-;;; Code: 
+;;; Code:
 
-(require 'cl)
+(require 'cl-lib)
 (require 'eieio)
 
 ;;; EIEIO compatibility macros
@@ -165,9 +165,9 @@
 ;; Also, for compatibility with the original code, this file does not
 ;; use Emacs Lisp LEXICAL-BINDING (see local variable on first line.)
 
-(defmacro* cell-defslot (class slot)
-  (let ((instance (gensym))
-	(value (gensym))
+(cl-defmacro cell-defslot (class slot)
+  (let ((instance (cl-gensym))
+	(value (cl-gensym))
 	(getter (intern (concat (symbol-name class) "-" (symbol-name slot)))) 
 	(setter (intern (concat "cell-set-value"
 				(symbol-name class) "-" (symbol-name slot)))))
@@ -179,7 +179,7 @@
 	       ,value))
        (defsetf ,getter ,setter))))
 
-(defmacro* cell-defclass (name superclasses &rest specs)
+(cl-defmacro cell-defclass (name superclasses &rest specs)
   `(defclass ,name ,superclasses
      ,(mapcar #'(lambda (spec)
 		  (if (listp spec)
@@ -233,7 +233,7 @@
 
 (defmethod cell-collect-value-p ((c cell))
   "When non-nil, collect the value of this cell during
-COLLECT-CELLS and related calls."
+CELL-COLLECT-CELLS and related calls."
   t)
 
 (defmethod cell-get-value ((c cell))
@@ -340,8 +340,7 @@ cell." nil)
   (length grid))
 
 (defun cell-vector-insert (oldvec pos elt)
-  "Insert ELT into VECTOR at POS, moving elements at POS and
-afterward down the list."
+  "Insert into OLDVEC at position POS the element ELT."
   (let* ((len (length oldvec))
 	 (newvec (make-vector (+ len 1) nil)))
     (dotimes (i (+ 1 len))
@@ -355,7 +354,7 @@ afterward down the list."
     newvec))
 
 (defun cell-vector-delete (oldvec pos)
-  "Remove position POS from OLDVEC."
+  "Remove from vector OLDVEC the position POS."
   (let* ((len (length oldvec))
 	 (newvec (make-vector (- len 1) nil)))
     (dotimes (i (- len 1))
@@ -372,17 +371,17 @@ afterward down the list."
     (cell-vector-insert grid row newrow)))
 	
 (defun cell-grid-insert-column (grid col)
-  "Returns a copy of GRID with a column inserted at column COL."
+  "Return a copy of GRID with a column inserted at column COL."
   (dotimes (i (cell-grid-rows grid))
     (setf (aref grid i) (cell-vector-insert (aref grid i) col nil)))
   grid)
 
 (defun cell-grid-delete-row (grid row)
-  "Returns a copy of GRID with the row ROW removed."
+  "Return a copy of GRID with the row ROW removed."
   (cell-vector-delete grid row))
 
 (defun cell-grid-delete-column (grid col)
-  "Returns a copy of GRID with the column COL removed."
+  "Return a copy of GRID with the column COL removed."
   (dotimes (i (cell-grid-rows grid))
     (setf (aref grid i) (cell-vector-delete (aref grid i) col)))
   grid)
@@ -406,7 +405,7 @@ afterward down the list."
   buffer ; associated buffer where user interface is displayed
   borders-p ; whether to display borders
   headers-p ; whether to display headers
-  raw-display-p ; are we doing raw display? 
+  raw-display-p ; whether we are doing raw display
   properties) ; general-purpose plist for extensions
 
 (cell-defslot cell-sheet name)
@@ -427,16 +426,15 @@ afterward down the list."
 (cell-defslot cell-sheet raw-display-p)
 (cell-defslot cell-sheet properties)
 
-(defmacro with-current-cell-sheet (&rest body)
-  "Compatibility macro for binding cell sheet variables."
+(defmacro cell-with-current-cell-sheet (&rest body)
+  "Evaluate BODY forms with cell-sheet variables bound."
   (declare (debug t))
-  `(let* (;;(sheet cell-sheet)
-	  (inhibit-read-only t)
+  `(let* ((inhibit-read-only t)
 	  (rendering (cell-sheet-rendering cell-current-sheet))
 	  (grid (cell-sheet-grid cell-current-sheet))
 	  (cursor (cell-sheet-cursor cell-current-sheet))
-	  (cursor-row (first cursor))
-	  (cursor-column (second cursor))
+	  (cursor-row (cl-first cursor))
+	  (cursor-column (cl-second cursor))
 	  (selection (cell-sheet-selection cell-current-sheet))
 	  (cell^ (cell-grid-get grid cursor-row cursor-column))
 	  (stops (cell-sheet-column-stops cell-current-sheet)))
@@ -451,21 +449,17 @@ afterward down the list."
 (make-variable-buffer-local 'cell-redo-history)
 
 (defun cell-push-undo-history ()
-  "Push a serialized copy of the current cell sheet onto the undo
-history."
+  "Push a serialized copy of the cell sheet onto the undo history."
   (push (cell-sheet-serialize cell-current-sheet)
 	cell-undo-history))
 
 (defun cell-push-redo-history ()
-  "Push a serialized copy of the current cell sheet onto the redo
-history."
+  "Push a serialized copy of the cell sheet onto the redo history."
   (push (cell-sheet-serialize cell-current-sheet)
 	cell-redo-history))
 
 (defun cell-pop-undo-history ()
-  "Revert the current cell sheet to the top of the undo
-history. Before this, it pushes the current cell sheet onto the
-redo history."
+  "Undo the last action."
   (let ((inhibit-read-only t)
 	(cursor (cell-sheet-cursor cell-current-sheet)))
     (if (null cell-undo-history)
@@ -481,7 +475,7 @@ redo history."
 (defun cell-sheet-undo ()
   "Undo the last edit."
   (interactive)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (let ((inhibit-read-only t))
 	(cell-push-redo-history)
 	(cell-pop-undo-history)
@@ -506,7 +500,8 @@ redo history."
 
 (defvar cell-mode-map nil "Keymap for Cell-mode.")
 
-(defun find-cell-mode-map ()
+(defun cell-find-cell-mode-map ()
+  "Return the cell-mode keymap."
   (or cell-mode-map
       (setf cell-mode-map
 	    (make-sparse-keymap))))
@@ -515,7 +510,7 @@ redo history."
   "Install local keybindings for Cell-mode."
   (interactive)
   (mapcar (lambda (mapping)
-	    (define-key (find-cell-mode-map) (car mapping) (cdr mapping)))
+	    (define-key (cell-find-cell-mode-map) (car mapping) (cdr mapping)))
 	  `(([(control c)(control e)] . cell-sheet-execute)
 	    ([(return)] . cell-sheet-create-cell)
 	    ([(control ? )] . cell-sheet-set-mark)
@@ -621,13 +616,14 @@ redo history."
 (defun cell-sheet-set-mark ()
   "Begin defining a region by putting the mark here."
   (interactive)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (setf (cell-sheet-mark cell-current-sheet) (list cursor-row cursor-column))
     (cell-sheet-update-selection-from-mark)
     (cell-sheet-update)))
 
 (defun cell-sheet-update-selection-from-mark ()
-  (with-current-cell-sheet
+  "Update the selection based on mark and cursor."
+  (cell-with-current-cell-sheet
       (let ((mark (cell-sheet-mark cell-current-sheet)))
 	(when mark
 	  (when (not (and  (= (car mark) cursor-row)
@@ -637,7 +633,8 @@ redo history."
 			(car mark) (cadr mark))))))))
 
 (defun cell-sheet-clear-mark* ()
-  (with-current-cell-sheet
+  "Clear the mark and selection without updating the sheet."
+  (cell-with-current-cell-sheet
       (setf (cell-sheet-mark cell-current-sheet) nil)
     (setf (cell-sheet-selection cell-current-sheet) nil)))
 
@@ -652,20 +649,20 @@ redo history."
 (defun cell-sheet-copy-to-clipboard ()
   "Copy the currently selected region to the clipboard."
   (interactive)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (if (null selection)
 	  (setf cell-clipboard (list (list (cell-grid-get grid cursor-row cursor-column))))
 	(let* ((inhibit-read-only t))
-	  (destructuring-bind (r1 c1 r2 c2) selection
+	  (cl-destructuring-bind (r1 c1 r2 c2) selection
 	    (let* ((dr (abs (- r2 r1)))
 		   (dc (abs (- c2 c1)))
 		   (start-row (min r1 r2))
 		   (start-col (min c1 c2))
 		   (out-rows ())
 		   (out-column ()))
-	      (do ((r start-row (+ 1 r)))
+	      (cl-do ((r start-row (+ 1 r)))
 		  ((> r (+ dr start-row)))
-		(do ((c start-col (+ 1 c)))
+		(cl-do ((c start-col (+ 1 c)))
 		    ((> c (+ dc start-col)))
 		  (push (copy-tree (cell-grid-get grid r c) :copy-vectors)
 			out-column))
@@ -677,20 +674,20 @@ redo history."
 (defun cell-sheet-blank-selection ()
   "Remove all cells within the current selection."
   (interactive)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
    (when selection
      (let* ((inhibit-read-only t))
        (cell-push-undo-history)
-       (destructuring-bind (r1 c1 r2 c2) selection
+       (cl-destructuring-bind (r1 c1 r2 c2) selection
 	 (let* ((dr (abs (- r2 r1)))
 		(dc (abs (- c2 c1)))
 		(start-row (min r1 r2))
 		(start-col (min c1 c2))
 		(out-rows ())
 		(out-column ()))
-	   (do ((r start-row (+ 1 r)))
+	   (cl-do ((r start-row (+ 1 r)))
 	       ((> r (+ dr start-row)))
-	     (do ((c start-col (+ 1 c)))
+	     (cl-do ((c start-col (+ 1 c)))
 		 ((> c (+ dc start-col)))
 	       (cell-grid-set grid r c nil)))))))))
 
@@ -707,12 +704,12 @@ redo history."
   (interactive)
   (let ((inhibit-read-only t))
     (cell-push-undo-history)
-    (with-current-cell-sheet
+    (cell-with-current-cell-sheet
 	(let ((rows cell-clipboard))
-	  (do ((r cursor-row (1+ r)))
+	  (cl-do ((r cursor-row (1+ r)))
 	      ((null rows))
 	    (let ((col (pop rows)))
-	      (do ((c cursor-column (1+ c)))
+	      (cl-do ((c cursor-column (1+ c)))
 		  ((null col))
 		(cell-grid-set grid r c (copy-tree (pop col) :copy-vectors))))))
       (cell-sheet-clear-mark*)
@@ -730,17 +727,20 @@ redo history."
 ;;; The cursor and the selection
 
 (defun cell-move-point-to-rendering ()
+  "Move point to the place where the sheet will be rendered."
   (goto-char (point-min))
   (while (and (not (eobp))
 	      (not (get-text-property (point) 'rendering)))
     (forward-char 1))
   (when (not (get-text-property (point) 'rendering))
-    (error "could not find rendering text property"))
+    (error "Cell-mode: could not find rendering text property"))
   (forward-char 1)
   (point))
 
 (defun cell-sheet-display-cursor (row column &optional face)
-  (with-current-cell-sheet
+  "Display a cursor using overlays at the give ROW and COLUMN.
+The argument FACE specifies the face to use for the overlay."
+  (cell-with-current-cell-sheet
    (let* ((inhibit-read-only t)  
 	  (face (or face 'cell-cursor-face))
 	  (cursor-width (if (and cell^ (cell-label-width cell^))
@@ -753,7 +753,9 @@ redo history."
 	 (goto-char p))))))
 
 (defun cell-sheet-highlight-cell (row column &optional face)
-  (with-current-cell-sheet
+  "Highlight a cell by adding face properties at ROW and COLUMN.
+The argument FACE specifies which face to use."
+  (cell-with-current-cell-sheet
    (let* ((inhibit-read-only t)  
 	  (cursor-width (if (and cell^ (cell-label-width cell^))
 			    (ceiling (cell-label-width cell^))
@@ -770,7 +772,7 @@ redo history."
 	 (let ((cl (cell-grid-get grid row c)))
 	   (when cl
 	     (when (cell-label-width cl)
-	       (incf n)
+	       (cl-incf n)
 	       (backward-char 1)))))
        ;; (when (plusp n)
        ;; 	 (goto-char (+ (point-at-bol) (aref stops column)))
@@ -779,10 +781,11 @@ redo history."
 			  (list 'face face))))))
 
 (defun cell-sheet-display-selection ()
-  (with-current-cell-sheet
+  "Display the selection using text properties."
+  (cell-with-current-cell-sheet
    (when selection
      (let* ((inhibit-read-only t))
-       (destructuring-bind (r1 c1 r2 c2) selection
+       (cl-destructuring-bind (r1 c1 r2 c2) selection
 	 (let* ((dr (abs (- r2 r1)))
 		(dc (abs (- c2 c1)))
 		(start-row (min r1 r2))
@@ -790,24 +793,25 @@ redo history."
 		(current-cell nil))
 	   (goto-char (point-min))
 	   (forward-line (1+ start-row))
-	   (do ((r start-row (+ r 1)))
+	   (cl-do ((r start-row (+ r 1)))
 	       ((> r (+ start-row dr)))
 	     (beginning-of-line)
 	     (let* ((pos (+ (point-at-bol) (aref stops start-col)))
 		    (end pos))
-	       (do ((c start-col (+ c 1)))
+	       (cl-do ((c start-col (+ c 1)))
 		   ((> c (+ start-col dc)))
 		 (setf current-cell (cell-grid-get grid r c))
 		 (let ((cursor-width (if (and current-cell (cell-label-width current-cell))
 					 (ceiling (cell-label-width current-cell))
 				       (- (aref stops (+ c 1)) 
 					  (aref stops c)))))
-		   (incf end cursor-width)))
+		   (cl-incf end cursor-width)))
 	       (add-text-properties pos end
 					(list 'face 'cell-selection-face)))
 	     (forward-line))))))))
 		 
 (defun cell-sheet-in-selection (rxx cxx)
+  "Return non-nil if row RXX, column CXX is within the selection."
   (let ((selection (cell-sheet-selection cell-current-sheet)))
     (when selection
       (let ((r1 (pop selection))
@@ -817,8 +821,9 @@ redo history."
 	(and (<= (min r1 r2) rxx (max r1 r2))
 	     (<= (min c1 c2) cxx (max c1 c2)))))))
 
-(defun cell-sheet-display-cursors (&optional compute-cursor-face)
-  (with-current-cell-sheet
+(defun cell-sheet-display-cursors ()
+  "Display all the cursors."
+  (cell-with-current-cell-sheet
       ;; remove overlays. there is a fix for emacs-21 here, which does
       ;; not have the function (remove-overlays)
 	(if (fboundp 'remove-overlays)
@@ -840,32 +845,36 @@ redo history."
     ;;   (when m (cell-sheet-display-cursor (first m) (second m) 'cell-mark-face)))))
 	      
 (defun cell-sheet-move-bol ()
+  "Move to the beginning of the line."
   (interactive)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (with-slots (cursor) cell-current-sheet
 	(setf cursor
-	      (list (first cursor) 0)))
+	      (list (cl-first cursor) 0)))
     (cell-sheet-update)))
 
 (defun cell-sheet-move-eol ()
+  "Move to the end of the line." 
   (interactive)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (with-slots (cursor grid) cell-current-sheet
 	(setf cursor
-	      (list (first cursor)
+	      (list (cl-first cursor)
 		    (1- (length (aref grid 0))))))
     (cell-sheet-update)))
 
 (defun cell-sheet-move-bob ()
+  "Move to the top left corner of the cell sheet."
   (interactive)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (with-slots (cursor) cell-current-sheet
 	(setf cursor (list 0 0))
 	(cell-sheet-update))))
 
 (defun cell-sheet-move-eob ()
+  "Move to the bottom right corner of the cell sheet."
   (interactive)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (with-slots (cursor grid) cell-current-sheet
 	(setf cursor
 	      (list (1- (length grid))
@@ -873,14 +882,15 @@ redo history."
     (cell-sheet-update)))
 
 (defun cell-sheet-move-cursor (direction)
-  (with-current-cell-sheet
+  "Move the cursor one cell in DIRECTION."
+  (cell-with-current-cell-sheet
    ;; clear selection
    (setf (cell-sheet-selection cell-current-sheet) nil)
    ;; calculate new cursor location
    (let* ((rows (cell-grid-rows grid))
 	  (cols (cell-grid-columns grid))
 	  (new-cursor
-	   (case direction
+	   (cl-case direction
 	     (:up (if (/= 0 cursor-row)
 		      (list (- cursor-row 1) cursor-column)
 		    cursor))
@@ -898,8 +908,8 @@ redo history."
      (if (cell-sheet-raw-display-p cell-current-sheet)
 	 ;; just move point to where cursor should go
 	 (progn
-	   (let ((buffer-position (+ 1 (second new-cursor)
-				     (* (first new-cursor)
+	   (let ((buffer-position (+ 1 (cl-second new-cursor)
+				     (* (cl-first new-cursor)
 					(+ 1 (cell-grid-columns grid))))))
 	     (goto-char buffer-position)
 	     ))
@@ -915,32 +925,38 @@ redo history."
 	   ;; (cell-sheet-update :lazy)))))))
 
 (defun cell-sheet-move-cursor-up ()
+  "Move the cursor one cell upward."
   (interactive)
   (cell-sheet-move-cursor :up))
 
 (defun cell-sheet-move-cursor-left ()
+  "Move the cursor one cell leftward."
   (interactive)
   (cell-sheet-move-cursor :left))
 
 (defun cell-sheet-move-cursor-down ()
+  "Move the cursor one cell downward."
   (interactive)
   (cell-sheet-move-cursor :down))
 
 (defun cell-sheet-move-cursor-right ()
+  "Move the cursor one cell rightward."
   (interactive)
   (cell-sheet-move-cursor :right))
 
 ;;; Executing cells
 
 (defun cell-sheet-execute ()
+  "Execute the current cell."
   (interactive)
-  (with-current-cell-sheet (cell-execute cell^)))
+  (cell-with-current-cell-sheet (cell-execute cell^)))
 
 ;;; Deleting cells
 
 (defun cell-sheet-delete-cell ()
+  "Delete the current cell."
   (interactive)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (cell-push-undo-history)
    (cell-grid-set grid cursor-row cursor-column nil)
    (cell-sheet-update)))
@@ -948,8 +964,9 @@ redo history."
 ;;; Interactively creating and editing cells
 
 (defun cell-sheet-create-cell ()
+  "Create or edit a cell at the cursor."
   (interactive)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (cell-push-undo-history)
       (let* ((the-cell (cell-grid-get grid cursor-row cursor-column))
 	     (value (when the-cell (cell-find-value the-cell))))
@@ -966,8 +983,9 @@ redo history."
       (cell-sheet-update)))
 
 (defun cell-sheet-create-image ()
+  "Create an image cell at the cursor."
   (interactive)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (cell-push-undo-history)
     (let ((i (make-instance 'cell-image-cell))
 	  (val (read-file-name "Image file name: ")))
@@ -976,9 +994,10 @@ redo history."
       (cell-sheet-update))))
 
 (defun cell-sheet-create-comment ()
+  "Create a comment cell at the cursor."
   (interactive)
   (cell-push-undo-history)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (let ((instance (make-instance 'cell-comment)))
 	(cell-grid-set grid cursor-row cursor-column instance)
 	;; fix this to reject empty strings
@@ -989,16 +1008,18 @@ redo history."
 ;;; Inserting rows and columns
 
 (defun cell-sheet-insert-row ()
+  "Insert a row at the cursor."
   (interactive)
   (cell-push-undo-history)
-  (with-current-cell-sheet 
+  (cell-with-current-cell-sheet 
    (setf (cell-sheet-grid cell-current-sheet) (cell-grid-insert-row grid cursor-row))
    (cell-sheet-update)))
 
 (defun cell-sheet-insert-column ()
+  "Insert a column at the cursor."
   (interactive)
   (cell-push-undo-history)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
    (let ((columns (+ 1 (cell-grid-columns (cell-sheet-grid cell-current-sheet)))))
      (setf (cell-sheet-grid cell-current-sheet) (cell-grid-insert-column grid cursor-column))
      (setf (cell-sheet-column-stops cell-current-sheet) (make-vector (+ 1 columns) 0))))
@@ -1007,16 +1028,18 @@ redo history."
 ;;; Deleting rows and columns
 
 (defun cell-sheet-delete-row ()
+  "Delete a row at the cursor."
   (interactive)
   (cell-push-undo-history)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
    (setf (cell-sheet-grid cell-current-sheet) (cell-grid-delete-row grid cursor-row))
    (cell-sheet-update)))
 
 (defun cell-sheet-delete-column ()
+  "Delete a column at the cursor."
   (interactive)
   (cell-push-undo-history)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
    (setf (cell-sheet-grid cell-current-sheet) (cell-grid-delete-column grid cursor-column))
    (cell-sheet-update)))
 
@@ -1024,7 +1047,7 @@ redo history."
 
 ;; This is useful when you want to process the contents of a sheet. 
 
-(defun collect-cells (sheet)
+(defun cell-collect-cells (sheet)
   "Return a flat list of all the cells in the SHEET."
   (let ((grid (cell-sheet-grid cell-current-sheet))
 	(cell^ nil)
@@ -1036,7 +1059,7 @@ redo history."
 	    (push cell^ cells)))))
     (nreverse cells)))
 
-(defun collect-cells-by-row (sheet)
+(defun cell-collect-cells-by-row (sheet)
   "Return a list of rows of all the cells in the SHEET."
   (let ((grid (cell-sheet-grid cell-current-sheet))
 	(rows nil))
@@ -1050,58 +1073,62 @@ redo history."
 	(when cells (push (nreverse cells) rows))))
     (nreverse rows)))
 
-(defun find-next-cell-row (sheet row col)
+(defun cell-find-next-cell-row (sheet row col)
+  "Find the next row of the subexpression in SHEET, ROW, COL."
   (let* ((grid (cell-sheet-grid cell-current-sheet))
 	 (cell^ (cell-grid-get grid row col))
 	 (num-rows (length grid))
 	 (found-row nil))
-    (block finding
-      (do ((r (+ 1 row) (+ 1 r)))
+    (cl-block finding
+      (cl-do ((r (+ 1 row) (+ 1 r)))
 	  ((= r num-rows) found-row)
 	(when (cell-grid-get grid r col)
-	  (return-from finding r))))))
+	  (cl-return-from finding r))))))
 
-(defun collect-cells* (sheet &optional r c)
+(defun cell-collect-cells* (sheet &optional r c)
+  "Collect cells recursively from SHEET starting at R, C."
   (let ((row (or r 0))
 	(col (or c 0)))
     (let* ((grid (cell-sheet-grid cell-current-sheet))
 	   (cell^ (cell-grid-get grid row col))
-	   (next-cell-row (find-next-cell-row cell-current-sheet row col)))
+	   (next-cell-row (cell-find-next-cell-row cell-current-sheet row col)))
       (message "COLLECT %S" (list row col (when cell^ (cell-value cell^))))
       (when (and cell^ (cell-collect-value-p cell^))
 	(cond ((null (cell-grid-get grid row (+ col 1)))
 	       ;; nothing to the right, so descend if possible.
 	       (list (append (when (and (< (+ row 1) (length grid))
 					(< (+ col 1) (length (aref grid 0))))
-			       (cons cell^ (collect-cells* cell-current-sheet (+ row 1) (+ col 1))))
+			       (cons cell^ (cell-collect-cells* cell-current-sheet (+ row 1) (+ col 1))))
 			     ;; check next
 			     (when next-cell-row
 			       (when (null (cell-grid-get grid (- next-cell-row 1) (- col 1)))	
 				 (message "NEXT-ROW_ %S" (list next-cell-row col))
-				 (collect-cells* cell-current-sheet next-cell-row col))))))
+				 (cell-collect-cells* cell-current-sheet next-cell-row col))))))
 	      ;; something to the right. it's part of this list.
 	      ((cell-grid-get grid row (+ col 1))
-	       (append (list cell^) (collect-cells* cell-current-sheet row (+ col 1))
+	       (append (list cell^) (cell-collect-cells* cell-current-sheet row (+ col 1))
 		       (when next-cell-row
 			 ;; is it part of this sublist? check up/left by one cell
 			 (when (null (cell-grid-get grid (- next-cell-row 1) (- col 1)))
 			   (message "NEXT-ROW+ %S" (list next-cell-row col))
-			   (collect-cells* cell-current-sheet next-cell-row col))))))))))
+			   (cell-collect-cells* cell-current-sheet next-cell-row col))))))))))
 
-(defun collect-cell-values* (tree)
+(defun cell-collect-cell-values* (tree)
+  "Collect all cell values from the TREE of cells."
   (cond ((vectorp tree)
 	 (car (read-from-string (cell-value tree))))
 	((consp tree)
 	 (apply #'list
-		(mapcar #'collect-cell-values* tree)))
+		(mapcar #'cell-collect-cell-values* tree)))
 	(t tree)))
 
 ;;; Drawing
 
 (defun cell-sheet-do-layout ()
+  "Compute layout information for the cell sheet."
   (let ((widths (make-vector (cell-grid-columns (cell-sheet-grid cell-current-sheet)) 0))
 	(column-width 0))
-    (with-current-cell-sheet
+    (cell-with-current-cell-sheet
 	(let ((rows (cell-grid-rows grid))
 	      (columns (cell-grid-columns grid)))
 	  ;; Find column widths and stops before rendering.
@@ -1134,6 +1161,7 @@ redo history."
 	  (setf (cell-sheet-widths cell-current-sheet) widths)))))
       
 (defun cell-sheet-do-redraw ()
+  "Redraw the cell sheet."
   (interactive)
   (let* ((inhibit-read-only t)
 	 (selection-now-p nil)
@@ -1142,10 +1170,10 @@ redo history."
 	 (rows (cell-grid-rows grid))
 	 (cursor (cell-sheet-cursor cell-current-sheet))
 	 (mark (cell-sheet-mark cell-current-sheet))
-	 (cursor-row (first cursor))
-	 (cursor-column (second cursor))
-	 (mark-row (first mark))
-	 (mark-column (second mark))
+	 (cursor-row (cl-first cursor))
+	 (cursor-column (cl-second cursor))
+	 (mark-row (cl-first mark))
+	 (mark-column (cl-second mark))
 	 (columns (cell-grid-columns grid))
 	 (column-stops (cell-sheet-column-stops cell-current-sheet))
 	 (widths (cell-sheet-widths cell-current-sheet))
@@ -1199,7 +1227,7 @@ redo history."
 	  (setf cell^ (cell-grid-get grid row col))
 	  (when cell^
 	    (setf face `(,(or (cell-face cell^) 'cell-default-face)
-			  ,(if (evenp col) 'cell-blank-face
+			  ,(if (cl-evenp col) 'cell-blank-face
 			     'cell-blank-odd-face))))
 	  ;; draw selection face if needed
 	  (if (cell-sheet-in-selection row col)
@@ -1230,7 +1258,7 @@ redo history."
 		       )
 		  (cell-insert-blank (- column-width cell-width) face)))
 	    ;; blank cell
-	    (progn (setf face (if selection-now-p face (if (evenp col) 'cell-blank-face
+	    (progn (setf face (if selection-now-p face (if (cl-evenp col) 'cell-blank-face
 									 'cell-blank-odd-face)))
 		   (setf cell-width (cell-insert-blank column-width face))))
 	  ;; add text properties to store row, col for mouse click
@@ -1246,14 +1274,16 @@ redo history."
       (cell-sheet-display-cursors))))
 
 (defun cell-sheet-set-raw-display (sheet bool)
+  "Enable raw display on SHEET if BOOL is non-nil."
   (setf (cell-sheet-raw-display-p cell-current-sheet) bool))
     
 ;;;; Rendering individual elements of the spreadsheet
 
-(defun cell-insert (cell^ &optional face)
-  "Make a clickable cell and insert it at point.
-Returns length of inserted string."
-  (let* ((label (or (cell-label cell^) cell-no-label-string))
+(defun cell-insert (c &optional face)
+  "Make a clickable text cell from C and insert it at point.
+Returns length of inserted string.  FACE is the optional face to
+use."
+  (let* ((label (or (cell-label c) cell-no-label-string))
 	 (face (or face 'cell-default-face))
 	 (action `(lambda ()
 		    (interactive)
@@ -1269,6 +1299,7 @@ Returns length of inserted string."
       (length label))))
 
 (defun cell-insert-blank (width &optional face)
+  "Insert a blank cell WIDTH characters wide in face FACE."
   (when (> width 0)
     (let ((blank (make-string width ? ))
 	  (face (or face 'cell-blank-face)))
@@ -1282,6 +1313,7 @@ Returns length of inserted string."
       width)))
 
 (defun cell-insert-spacer (width &optional face)
+  "Insert an arbitrary WIDTH spacer with face FACE."
   (insert "Q")
   (backward-char)
   (put-text-property (point) (1+ (point)) 'display
@@ -1292,9 +1324,11 @@ Returns length of inserted string."
   (forward-char))
 
 (defun cell-insert-header (width number &optional empty)
+  "Insert a header cell of width WIDTH displaying NUMBER.
+If EMPTY is non-nil, don't display the number."
   (let ((blank "")
 	(label (if empty " "(format "%d" number)))
-	(face (if (evenp number)
+	(face (if (cl-evenp number)
 		  'cell-axis-face
 		'cell-axis-odd-face)))
     (dotimes (i (- width (length label)))
@@ -1302,7 +1336,9 @@ Returns length of inserted string."
     (insert (propertize (concat blank label)
 			'face face))))
 	
-(defun make-clickable (text action &optional face)
+(defun cell-make-clickable (text action &optional face)
+  "Make TEXT clickable calling function ACTION.
+The optional argument FACE is the face to use." 
   (let ((keymap (make-sparse-keymap))
 	(face (or face 'cell-face-red)))
     (define-key keymap [mouse-2] action)
@@ -1313,25 +1349,29 @@ Returns length of inserted string."
 ;;; Serialization
 
 (defun cell-remove-rendering* ()
+  "Remove the cell sheet's rendering without updating." 
   (let ((inhibit-read-only t))
     (when (eq major-mode 'cell-mode)
       (delete-region (point-min) (point-max)))))
 
 (defun cell-remove-rendering ()
+  "Remove the cell sheet's rendering and update."
   (when (eq major-mode 'cell-mode)
     (cell-remove-rendering*)
     (cell-sheet-update-serialization)))
 
 (defun cell-sheet-update* ()
+  "Update the cell sheet and mark the buffer non-modified."
   (when (eq major-mode 'cell-mode)
     (let ((inhibit-read-only t))
       (cell-sheet-update)
       (setf (buffer-modified-p (current-buffer)) nil))))
 
 (defun cell-sheet-update-serialization ()
+  "Rewrite the buffer contents to reflect the current data."
   (interactive)
   (let ((inhibit-read-only t))
-    (with-current-cell-sheet
+    (cell-with-current-cell-sheet
 	(save-excursion
 	  (delete-region (point-min) (point-max))
 	  (goto-char (point-min))
@@ -1350,21 +1390,24 @@ Returns length of inserted string."
 				 (not (get-text-property (point) 'rendering)))
 		       (forward-char 1))
 		     (if (not (get-text-property (point) 'rendering))
-			 (error "could not find rendering text property")
+			 (error "Cell-mode: could not find rendering text property")
 		       (point)))))
 	    (add-text-properties (point-min)
 				 x
 				 (list 'display "")))))))
 
 (defun cell-sheet-update (&optional lazy)
+  "Update the entire cell sheet.
+If LAZY is non-nil, just redraw without updating."
   (interactive)
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (unless lazy
 	(cell-sheet-update-serialization)
 	(cell-sheet-do-layout))
     (cell-sheet-do-redraw)))
 
 (defun cell-sheet-serialize (sheet)
+  "Return a string version of SHEET."
   (lexical-let* ((grid (cell-sheet-grid cell-current-sheet))
 		 (sheet^ cell-current-sheet)
 		 (rows (cell-grid-rows grid))
@@ -1387,11 +1430,12 @@ Returns length of inserted string."
 	(buffer-substring-no-properties (point-min) (point-max))))))
 
 (defun cell-sheet-from-plist (plist)
-  (let* ((name (getf plist :name))
-	 (rows (getf plist :rows))
-	 (cols (getf plist :cols))
-	 (cells (getf plist :grid))
-	 (raw-display-p (getf plist :raw-display-p))
+  "Return a new cell-sheet object constructed from the data in PLIST."
+  (let* ((name (cl-getf plist :name))
+	 (rows (cl-getf plist :rows))
+	 (cols (cl-getf plist :cols))
+	 (cells (cl-getf plist :grid))
+	 (raw-display-p (cl-getf plist :raw-display-p))
 	 (sheet^ (make-instance 'cell-sheet :name name :rows rows :cols cols))
 	 (grid (cell-sheet-grid cell-current-sheet))
 	 (cell-ob nil)
@@ -1404,27 +1448,29 @@ Returns length of inserted string."
     (while (setf cell-ob (pop cells))
       (setf cell-plist (cdr cell-ob))
       (setf cell^ (make-instance
-		  (getf cell-plist :class)
-		  :label (getf cell-plist :label)
-		  :value (getf cell-plist :value)
-		  :face (getf cell-plist :face)))
+		  (cl-getf cell-plist :class)
+		  :label (cl-getf cell-plist :label)
+		  :value (cl-getf cell-plist :value)
+		  :face (cl-getf cell-plist :face)))
       (cell-grid-set grid 
-		(getf cell-plist :row)
-		(getf cell-plist :col)
+		(cl-getf cell-plist :row)
+		(cl-getf cell-plist :col)
 		cell^))
     cell-current-sheet))
 
 ;;; Mouse support
 
 (defun cell-sheet-mouse-move-cursor (event)
+  "Move the mouse cursor to the clicked cell.
+EVENT is the mouse event data."
   (interactive "e")
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
    (when event
-     (destructuring-bind (event-type position &optional ignore) event
+     (cl-destructuring-bind (event-type position &optional ignore) event
        (let* ((clicked-position (posn-point position))
 	      (clicked-cell (get-text-property clicked-position 'cell-mode-position)))
 	 ;;
-	 ;; are we in raw display mode? 
+	 ;; whether we are in raw display mode
 	 (when (cell-sheet-raw-display-p cell-current-sheet)
 	   (goto-char clicked-position)
 	   ;;
@@ -1440,21 +1486,22 @@ Returns length of inserted string."
 	 ;;
 	 ;; not in raw display
 	 (when clicked-cell
-	   (destructuring-bind (clicked-row clicked-column) clicked-cell
+	   (cl-destructuring-bind (clicked-row clicked-column) clicked-cell
 	     (setf (cell-sheet-cursor cell-current-sheet) clicked-cell)
 	     (when (cell-sheet-selection cell-current-sheet)
 	       (cell-sheet-update-selection-from-mark))
 	     (cell-sheet-update))))))))
 
 (defun cell-sheet-mouse-execute (event)
+  "Execute the clicked cell.  EVENT is the mouse event data."
   (interactive "e")
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
    (when event
-     (destructuring-bind (event-type position &optional ignore) event
+     (cl-destructuring-bind (event-type position &optional ignore) event
        (let* ((clicked-position (posn-point position))
 	      (clicked-cell (get-text-property clicked-position 'cell-mode-position)))
 	 (when clicked-cell
-	   (destructuring-bind (clicked-row clicked-column) clicked-cell
+	   (cl-destructuring-bind (clicked-row clicked-column) clicked-cell
 	     (setf (cell-sheet-cursor cell-current-sheet) clicked-cell)
 	     (let ((c (cell-grid-get (cell-sheet-grid cell-current-sheet)
 				     clicked-row clicked-column)))
@@ -1463,10 +1510,11 @@ Returns length of inserted string."
 		 (cell-sheet-update))))))))))
 
 (defun cell-sheet-mouse-select (event)
+  "Select a cell with the mouse.  EVENT is the mouse event data."
   (interactive "e")
-  (with-current-cell-sheet
+  (cell-with-current-cell-sheet
       (cell-sheet-clear-mark*)
-   (destructuring-bind (event-type position1 position2 &rest ignore) event
+   (cl-destructuring-bind (event-type position1 position2 &rest ignore) event
      (let* ((pt1 (get-text-property (posn-point position1) 'cell-mode-position))
 	    (pt2 (get-text-property (posn-point position2) 'cell-mode-position))
 	    (sel `(,@pt1 ,@pt2)))
@@ -1476,7 +1524,7 @@ Returns length of inserted string."
 ;;; Additional commands
 
 (defun cell-sheet-create (&optional r0 c0)
-  "Create a new cell sheet with R rows and C columns."
+  "Create a new cell sheet with R0 rows and C0 columns."
   (interactive)
   (let ((r (or r0 (read-from-minibuffer "Create cell-sheet with how many rows? " "24")))
 	(c (or c0 (read-from-minibuffer "...with how many columns? " "40"))))
@@ -1490,59 +1538,59 @@ Returns length of inserted string."
 
 ;;; Customization
 
-(defgroup cell-mode nil
+(defgroup cell nil
   "Options for cell-mode."
   :group 'applications)
 
 ;;; Font locking
 
 (defface cell-default-face '((t (:foreground "black")))
-  "Face for cells." :group 'cell-mode)
+  "Face for cells." :group 'cell)
 
 (defface cell-action-face '((t (:foreground "yellow" :background "red" :bold t :weight bold)))
-  "Face for cells that perform an action." :group 'cell-mode)
+  "Face for cells that perform an action." :group 'cell)
 
 (defface cell-comment-face '((t (:foreground "dodger blue")))
-  "Face for cells that simply label stuff." :group 'cell-mode)
+  "Face for cells that simply label stuff." :group 'cell)
 
 (defface cell-file-face '((t (:foreground "yellowgreen")))
-  "Face for simple links to files." :group 'cell-mode)
+  "Face for simple links to files." :group 'cell)
 
 (defface cell-cursor-face '((t (:background "hot pink" :foreground "yellow"
 				:box (:line-width 1 :color "magenta"))))
-  "Face for selected cell." :group 'cell-mode)
+  "Face for selected cell." :group 'cell)
 
 (defface cell-mark-face '((t (:background "yellow" :foreground "red")))
-  "Face for marked cell." :group 'cell-mode)
+  "Face for marked cell." :group 'cell)
 
 (defface cell-selection-face '((t (:background "pale green" :foreground "gray20"
 				   :box (:line-width 1 :color "pale green"))))
-  "Face for multi-cell selection." :group 'cell-mode)
+  "Face for multi-cell selection." :group 'cell)
 
 (defface cell-text-face '((t (:foreground "yellow")))
-  "Face for text entry cells." :group 'cell-mode)
+  "Face for text entry cells." :group 'cell)
 
 (defface cell-blank-face '((t (:background 
 			       "wheat" 
 			       :box 
 			       (:line-width 1 :color "dark khaki"))))
-  "Face for blank cells." :group 'cell-mode)
+  "Face for blank cells." :group 'cell)
 
 (defface cell-blank-odd-face '((t (:background 
 				   "cornsilk" 
 				   :box 
 				   (:line-width 1 :color "dark khaki"))))
-  "Face for blank cells in odd columns" :group 'cell-mode)
+  "Face for blank cells in odd columns" :group 'cell)
 
 (defface cell-axis-face '((t :foreground "gray50" 
 			     :background "gray80" 
 			     :box (:line-width 1 :color "grey70")))
-  "Face for numbered axes."  :group 'cell-mode)
+  "Face for numbered axes."  :group 'cell)
 				   
 (defface cell-axis-odd-face '((t :foreground "gray50" 
 			     :background "gray90" 
 			     :box (:line-width 1 :color "grey70")))
-  "Face for numbered axes in odd columns." :group 'cell-mode)
+  "Face for numbered axes in odd columns." :group 'cell)
 	   
 (provide 'cell)
 ;;; cell.el ends here
