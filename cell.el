@@ -7,6 +7,7 @@
 ;; URL: http://xelf.me/cell.html
 ;; Keywords: tools, lisp, gui
 ;; Version: 2.0
+;; Package-Requires: ((emacs "24.4"))
 ;; License: MIT (full text follows)
 
 ;; Permission is hereby granted, free of charge, to any person
@@ -66,8 +67,6 @@
 
 ;; - It is highly recommended to byte-compile this file so that
 ;;   Cell-mode responds quickly to keypresses.
-;; - Emacs' CL emulation package is required at runtime.  This
-;;   requirement will be eliminated if possible.
 ;; - Cell-mode source dates originally to 2006 and thus uses dynamic
 ;;   binding by default.  Two warnings each about free variables named
 ;;   "row" and "col" are to be expected during byte-compilation.
@@ -168,7 +167,7 @@
 (cl-defmacro cell-defslot (class slot)
   (let ((instance (cl-gensym))
 	(value (cl-gensym))
-	(getter (intern (concat (symbol-name class) "-" (symbol-name slot)))) 
+	(getter (intern (concat (symbol-name class) "-" (symbol-name slot))))
 	(setter (intern (concat "cell-set-value"
 				(symbol-name class) "-" (symbol-name slot)))))
     `(progn
@@ -192,11 +191,11 @@
 
 ;; Cells
 
-(defcustom cell-blank-width 4 "Default width of blank cells, in spaces." 
+(defcustom cell-blank-width 4 "Default width of blank cells, in spaces."
   :group 'cell-mode )
 
-(defcustom cell-no-label-string "no label" 
-  "Default string for when a cell has no label." 
+(defcustom cell-no-label-string "no label"
+  "Default string for when a cell has no label."
   :group 'cell-mode)
 
 (defvar cell-current-sheet nil "This buffer's cell-sheet object.")
@@ -210,10 +209,10 @@
 (defvar cell-cached-buffer-positions nil)
 (make-variable-buffer-local 'cell-cached-buffer-positions)
 
-(cell-defclass cell () 
+(cell-defclass cell ()
   label       ; label to be displayed on the cell
   label-width ; width of label (when not integral; used for images)
-  value       ; can be any lisp object the cell requires. 
+  value       ; can be any lisp object the cell requires.
   face        ; face to display cell label with,
               ; or use propertized text for label)
   )
@@ -314,7 +313,7 @@ cell." nil)
 (defun cell-make-grid (rows cols)
   "Make a new grid with ROWS rows and COLS columns."
   (let ((grid (make-vector rows nil)))
-    (dotimes (row rows) 
+    (dotimes (row rows)
       (setf (aref grid row) (make-vector cols nil))) 
     grid))
 
@@ -1416,7 +1415,7 @@ If LAZY is non-nil, just redraw without updating."
     (cl-labels ((serialize-cell (cell^ row col)
 		  (format "(:cell :row %d :col %d :class %S :label %S :value %S)"
 			  row col (eieio-object-class cell^) (when (cell-label cell^)
-						    (substring-no-properties (cell-label cell^)))
+							       (substring-no-properties (cell-label cell^)))
 			  (cell-value cell^))))
       (with-temp-buffer
 	(insert (format "(:sheet :name %S :rows %d :cols %d :raw-display-p %S :grid ("
