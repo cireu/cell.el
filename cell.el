@@ -6,7 +6,7 @@
 ;; Maintainer: David O'Toole <dto@xelf.me> <deeteeoh1138@gmail.com>
 ;; URL: http://xelf.me/cell.html
 ;; Keywords: tools, lisp, gui
-;; Version: 2.0
+;; Version: 2.1
 ;; Package-Requires: ((emacs "24.4"))
 ;; License: MIT (full text follows)
 
@@ -149,7 +149,7 @@
 
 ;;; Code:
 
-(require 'cl-lib)
+(require 'cl)
 (require 'eieio)
 
 ;;; EIEIO compatibility macros
